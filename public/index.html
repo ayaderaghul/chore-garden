@@ -8,6 +8,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Outfit:wght@400;500;600;700&display=swap">
 <style>
+/* base reset (the Claude preview supplied these; a standalone page needs its own) */
+[hidden]{display:none!important}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+
 /* Layout: one narrow column — status (level + progress), the garden bed, then the chore seed-packets you tap, then the recent log. */
 :root{
   --bg:#e7eee1; --paper:#f6f9f1; --ink:#1d3324; --muted:#5d7262; --line:#c9d6c1;
