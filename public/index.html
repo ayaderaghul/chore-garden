@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#3f6b45">
+<title>Chore Garden</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Outfit:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one narrow column — status (level + progress), the garden bed, then the chore seed-packets you tap, then the recent log. */
+:root{
+  --bg:#e7eee1; --paper:#f6f9f1; --ink:#1d3324; --muted:#5d7262; --line:#c9d6c1;
+  --moss:#3f6b45; --soil:#6b4a33; --soil-2:#55392a; --sky:#d6e6d0; --accent:#d9546b; --gold:#e3a72f;
+  --display:"Bagel Fat One","Arial Rounded MT Bold",system-ui,sans-serif;
+  --body:"Outfit",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111c15; --paper:#18261d; --ink:#e4eedf; --muted:#9db29f; --line:#2d4233;
+  --moss:#7fb886; --soil:#4a3324; --soil-2:#3a271b; --sky:#16261c; --accent:#f07a8e; --gold:#f2c056; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111c15; --paper:#18261d; --ink:#e4eedf; --muted:#9db29f; --line:#2d4233;
+  --moss:#7fb886; --soil:#4a3324; --soil-2:#3a271b; --sky:#16261c; --accent:#f07a8e; --gold:#f2c056; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+h1,h2{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance;letter-spacing:.01em}
+h1{font-size:2.1rem;line-height:1;color:var(--moss)}
+h2{font-size:1.25rem}
+.label{font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* status */
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.lvl{display:flex;align-items:center;gap:12px}
+.badge{width:58px;height:58px;border-radius:50%;background:var(--moss);color:var(--paper);display:grid;place-items:center;font-family:var(--display);font-size:1.6rem;flex:none}
+.lvl .title{font-weight:700;font-size:1.05rem}
+.bar{height:12px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px}
+.bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--moss),var(--gold));border-radius:99px;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+.stat b{display:block;font-family:var(--display);font-weight:400;font-size:1.35rem;font-variant-numeric:tabular-nums;line-height:1.1}
+@media (max-width:420px){.stats{grid-template-columns:repeat(2,1fr)}}
+
+/* garden */
+.bed{position:relative;border-radius:18px;overflow:hidden;background:var(--sky);border:1px solid var(--line)}
+.flowers{display:flex;flex-wrap:wrap;align-items:flex-end;gap:2px 0;padding:16px 10px 0;min-height:150px;position:relative;z-index:1}
+.fl{width:40px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+.fl svg{display:block;overflow:visible}
+.fl.new{animation:grow .9s cubic-bezier(.2,1.4,.4,1) both;transform-origin:50% 100%}
+@keyframes grow{0%{transform:scaleY(0) scaleX(.4);opacity:0}60%{opacity:1}100%{transform:none}}
+.soil{height:26px;background:repeating-linear-gradient(90deg,var(--soil) 0 14px,var(--soil-2) 14px 16px);position:relative;z-index:0}
+.empty{padding:28px 18px;color:var(--muted);text-align:center;width:100%;align-self:center}
+.empty strong{color:var(--ink)}
+.more{position:absolute;right:10px;top:8px;font-size:.75rem;color:var(--muted);z-index:2}
+
+/* chores */
+.head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.link{background:none;border:0;color:var(--moss);font-weight:600;padding:4px 0;text-decoration:underline;text-underline-offset:3px}
+.chores{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.chore{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px;transition:transform .12s,border-color .12s}
+.chore:hover{border-color:var(--moss)}
+.chore:active{transform:scale(.97)}
+.chore .ic{width:38px;height:38px}
+.chore .nm{font-weight:600;line-height:1.25;min-width:0;overflow-wrap:anywhere}
+.chore .meta{display:flex;gap:8px;align-items:center;font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.pips{display:inline-flex;gap:3px}.pips i{width:7px;height:7px;border-radius:50%;background:var(--line)}.pips i.on{background:var(--gold)}
+.del{position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--bg);font-size:1rem;line-height:1;display:grid;place-items:center}
+.chores:not(.editing) .del{display:none}
+.chores.editing .chore{border-style:dashed}
+
+form.add{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;background:var(--paper);border:1px dashed var(--moss);border-radius:14px;padding:10px}
+form.add input,form.add select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 10px;min-width:0}
+.btn{background:var(--moss);color:var(--paper);border:0;border-radius:10px;padding:9px 14px;font-weight:600}
+@media (max-width:520px){form.add{grid-template-columns:1fr 1fr}form.add input{grid-column:1/-1}form.add .btn{grid-column:1/-1}}
+
+/* collection + log */
+.coll{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:flex;align-items:center;gap:6px;background:var(--paper);border:1px solid var(--line);border-radius:99px;padding:4px 12px 4px 6px;font-size:.85rem}
+.chip svg{width:24px;height:24px}
+.chip b{font-variant-numeric:tabular-nums}
+.chip.locked{opacity:.45}
+.log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.log li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.log li svg{width:24px;height:24px;flex:none}
+.log .t{margin-left:auto;color:var(--muted);font-size:.8rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.log .p{color:var(--moss);font-weight:700;font-variant-numeric:tabular-nums}
+.log .undo{background:none;border:1px solid var(--line);border-radius:8px;padding:2px 8px;font-size:.8rem;color:var(--muted)}
+
+/* toasts */
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:99px;font-weight:600;z-index:20;box-shadow:0 6px 24px rgba(0,0,0,.2);white-space:nowrap;animation:pop .3s ease-out}
+.toast.lv{background:var(--gold);color:#2a1d05;font-family:var(--display);font-weight:400;font-size:1.1rem}
+@keyframes pop{from{transform:translate(-50%,20px);opacity:0}}
+.note{font-size:.78rem;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.gate{position:fixed;inset:0;background:var(--bg);display:grid;place-items:center;z-index:30;padding:max(16px,env(safe-area-inset-left,0px))}
+.gatecard{display:flex;flex-direction:column;gap:10px;width:min(340px,100%);background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:20px}
+.gatecard input{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div style="min-width:0;flex:1 1 260px">
+      <h1>Chore Garden</h1>
+      <div class="lvl" style="margin-top:14px">
+        <div class="badge" id="lvlNum">1</div>
+        <div style="flex:1;min-width:0">
+          <div class="title" id="lvlTitle">Seedling</div>
+          <div class="bar"><i id="lvlBar" style="width:0%"></i></div>
+          <div class="note" id="lvlNext" style="margin-top:4px">0 / 30 pts to next level</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="stats" aria-label="Stats">
+    <div class="stat"><span class="label">Points</span><b id="sPts">0</b></div>
+    <div class="stat"><span class="label">Flowers</span><b id="sFl">0</b></div>
+    <div class="stat"><span class="label">Today</span><b id="sToday">0</b></div>
+    <div class="stat"><span class="label">Day streak</span><b id="sStreak">0</b></div>
+  </section>
+
+  <section aria-label="Your garden">
+    <div class="bed">
+      <span class="more" id="more"></span>
+      <div class="flowers" id="garden"></div>
+      <div class="soil"></div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:12px">
+    <div class="head"><h2>Tap a chore when it's done</h2><button class="link" id="editBtn" type="button">Edit chores</button></div>
+    <form class="add" id="addForm" hidden>
+      <input id="newName" placeholder="New chore, e.g. Descale kettle" maxlength="60" required>
+      <select id="newDiff" aria-label="Difficulty"></select>
+      <select id="newFlower" aria-label="Flower"></select>
+      <button class="btn" type="submit">Add</button>
+    </form>
+    <div class="chores" id="chores"></div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:10px">
+    <h2>Flower collection</h2>
+    <div class="coll" id="coll"></div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:6px">
+    <h2>Recently done</h2>
+    <ul class="log" id="log"></ul>
+    <p class="note" id="saveNote"></p>
+  </section>
+</div>
+
+<div class="gate" id="gate" hidden>
+  <form id="gateForm" class="gatecard">
+    <h2>Chore Garden</h2>
+    <label for="gateInput" class="note">Enter your passcode to open your garden.</label>
+    <input id="gateInput" type="password" autocomplete="current-password" required>
+    <button class="btn" type="submit">Open garden</button>
+    <p class="note" id="gateMsg" role="alert"></p>
+  </form>
+</div>
+<script>
+// ---------- flowers ----------
+const FLOWERS = {
+  daisy:     {name:"Daisy",      petal:"#ffffff", stroke:"#d9d4c4", center:"#f2c230", n:12, len:9,  w:2.6},
+  poppy:     {name:"Poppy",      petal:"#e8483f", stroke:"#b8302a", center:"#2b2320", n:5,  len:8,  w:6},
+  sunflower: {name:"Sunflower",  petal:"#f5b82e", stroke:"#d08f14", center:"#6b3f1d", n:16, len:9,  w:3},
+  cornflower:{name:"Cornflower", petal:"#4f7fe0", stroke:"#2f58b0", center:"#2a3a7a", n:9,  len:8,  w:3.4},
+  peony:     {name:"Peony",      petal:"#f29bb7", stroke:"#d46c90", center:"#f7d36a", n:8,  len:8,  w:5.5, layers:2},
+  marigold:  {name:"Marigold",   petal:"#f28a22", stroke:"#c9670c", center:"#b8500a", n:10, len:7,  w:4, layers:2},
+  tulip:     {name:"Tulip",      petal:"#d9546b", stroke:"#a83347", type:"tulip"},
+  lavender:  {name:"Lavender",   petal:"#9b7ad8", stroke:"#6f50b0", type:"spike"},
+};
+const DIFF = [
+  {key:1,label:"Quick",  pts:5,  stem:22},
+  {key:2,label:"Easy",   pts:10, stem:34},
+  {key:3,label:"Medium", pts:20, stem:46},
+  {key:4,label:"Hard",   pts:35, stem:60},
+];
+const diffOf = k => DIFF.find(d=>d.key===k) || DIFF[0];
+
+function head(sp, cx, cy, s){
+  const f = FLOWERS[sp] || FLOWERS.daisy; let g = "";
+  if (f.type==="tulip"){
+    g += `<path d="M${cx-7*s},${cy-2*s} Q${cx-8*s},${cy+8*s} ${cx},${cy+8*s} Q${cx+8*s},${cy+8*s} ${cx+7*s},${cy-2*s} L${cx+3.5*s},${cy+2*s} L${cx},${cy-4*s} L${cx-3.5*s},${cy+2*s} Z" fill="${f.petal}" stroke="${f.stroke}" stroke-width="${s}"/>`;
+    return g;
+  }
+  if (f.type==="spike"){
+    for (let i=0;i<6;i++){ const y=cy+8*s-i*3.4*s, r=(2.6-i*.25)*s;
+      g += `<circle cx="${cx-1.8*s}" cy="${y}" r="${r}" fill="${f.petal}" stroke="${f.stroke}" stroke-width="${.6*s}"/><circle cx="${cx+1.8*s}" cy="${y-1.6*s}" r="${r}" fill="${f.petal}" stroke="${f.stroke}" stroke-width="${.6*s}"/>`; }
+    return g;
+  }
+  const layers = f.layers||1;
+  for (let L=0; L<layers; L++){
+    const len = f.len*s*(1-L*.35), off = L*(180/f.n);
+    for (let i=0;i<f.n;i++){
+      const a = i*360/f.n + off;
+      g += `<ellipse cx="${cx}" cy="${cy-len*.55}" rx="${f.w*s*.5*(1-L*.2)}" ry="${len*.55}" transform="rotate(${a} ${cx} ${cy})" fill="${f.petal}" stroke="${f.stroke}" stroke-width="${.7*s}"/>`;
+    }
+  }
+  g += `<circle cx="${cx}" cy="${cy}" r="${(f.type? 2.5 : 3.4)*s}" fill="${f.center}"/>`;
+  return g;
+}
+function iconSVG(sp, px=38){
+  return `<svg class="ic" viewBox="-14 -14 28 28" width="${px}" height="${px}" aria-hidden="true">${head(sp,0,0,1)}</svg>`;
+}
+function plantSVG(sp, diff){
+  const d = diffOf(diff), s = .8 + diff*.12, stem = d.stem, h = stem + 14*s + 4;
+  const cy = 12*s, by = h;
+  const leafY = cy + stem*.55;
+  const leaf = `<path d="M20,${leafY} q8,-8 13,-3 q-6,6 -13,3z" fill="var(--moss)"/>` + (diff>=3?`<path d="M20,${leafY+10} q-8,-8 -13,-3 q6,6 13,3z" fill="var(--moss)"/>`:"");
+  return `<svg viewBox="0 0 40 ${h}" width="40" height="${h}" aria-hidden="true"><path d="M20,${cy} L20,${by}" stroke="var(--moss)" stroke-width="2.2" stroke-linecap="round"/>${leaf}${head(sp,20,cy,s)}</svg>`;
+}
+
+// ---------- levels ----------
+const TITLES = ["Seedling","Sprout","Bud","Blossom","Weeder","Gardener","Green thumb","Florist","Botanist","Head gardener","Garden keeper","Orchard master"];
+function levelInfo(pts){
+  let L=1, base=0, need=30;
+  while (pts >= base+need){ base+=need; L++; need = 30 + 20*(L-1); }
+  return {L, into:pts-base, need, title: TITLES[Math.min(L-1,TITLES.length-1)] + (L>TITLES.length?` ${L-TITLES.length+1}`:"")};
+}
+
+// ---------- state ----------
+let state = {chores: [], log: [], pts: 0};
+let justAdded = null, editing = false;
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const dayKey = t => { const d=new Date(t); return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(); };
+
+function streak(){
+  const days = new Set(state.log.map(e=>dayKey(e.t)));
+  let n=0, d=new Date(); if(!days.has(dayKey(d))) d.setDate(d.getDate()-1);
+  while(days.has(dayKey(d))){ n++; d.setDate(d.getDate()-1); }
+  return n;
+}
+
+// ---------- render ----------
+function render(){
+  const li = levelInfo(state.pts);
+  $("lvlNum").textContent = li.L; $("lvlTitle").textContent = li.title;
+  $("lvlBar").style.width = Math.min(100, li.into/li.need*100)+"%";
+  $("lvlNext").textContent = `${li.into} / ${li.need} pts to level ${li.L+1}`;
+  $("sPts").textContent = state.pts; $("sFl").textContent = state.log.length;
+  const today = dayKey(Date.now()); $("sToday").textContent = state.log.filter(e=>dayKey(e.t)===today).length;
+  $("sStreak").textContent = streak();
+
+  // garden: most recent 90, oldest first so it grows left→right
+  const show = state.log.slice(-90);
+  $("more").textContent = state.log.length>90 ? `showing latest 90 of ${state.log.length}` : "";
+  $("garden").innerHTML = show.length ? show.map(e=>
+    `<div class="fl${e.id===justAdded?" new":""}" title="${esc(e.n)} · ${new Date(e.t).toLocaleDateString()}">${plantSVG(e.f,e.d)}</div>`).join("")
+    : `<div class="empty"><strong>Nothing planted yet.</strong><br>Tap a chore below and its flower grows here.</div>`;
+
+  $("chores").className = "chores" + (editing?" editing":"");
+  $("chores").innerHTML = state.chores.map(c=>{ const d=diffOf(c.diff);
+    return `<button type="button" class="chore" data-id="${c.id}" aria-label="Done: ${esc(c.name)}, ${d.pts} points">
+      ${iconSVG(c.flower)}<span class="nm">${esc(c.name)}</span>
+      <span class="meta"><span class="pips">${DIFF.map(x=>`<i class="${x.key<=c.diff?"on":""}"></i>`).join("")}</span>+${d.pts} pts</span>
+      <span class="del" data-del="${c.id}" role="button" aria-label="Remove ${esc(c.name)}">×</span></button>`;}).join("")
+    || `<p class="note">No chores yet. Use Edit chores to add one.</p>`;
+
+  const counts = {}; state.log.forEach(e=>counts[e.f]=(counts[e.f]||0)+1);
+  $("coll").innerHTML = Object.keys(FLOWERS).map(k=>`<span class="chip${counts[k]?"":" locked"}">${iconSVG(k,24)}${FLOWERS[k].name} <b>×${counts[k]||0}</b></span>`).join("");
+
+  const recent = state.log.slice(-8).reverse();
+  $("log").innerHTML = recent.length ? recent.map((e,i)=>`<li>${iconSVG(e.f,24)}<span>${esc(e.n)}</span><span class="p">+${e.p}</span>
+      ${i===0?`<button class="undo" type="button" id="undoBtn">Undo</button>`:""}
+      <span class="t">${new Date(e.t).toLocaleString([], {weekday:"short",hour:"2-digit",minute:"2-digit"})}</span></li>`).join("")
+    : `<li class="note">Your finished chores show up here.</li>`;
+}
+
+function toast(msg, lv){
+  const t=document.createElement("div"); t.className="toast"+(lv?" lv":""); t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(), lv?2600:1600);
+}
+
+// ---------- server ----------
+const PASS_KEY = "chore-garden-passcode";
+let passcode = ""; try { passcode = localStorage.getItem(PASS_KEY) || ""; } catch(e){}
+let busy = false;
+
+async function api(method, url, body){
+  const res = await fetch(url, {method, headers:{"content-type":"application/json","x-passcode":passcode}, body: body?JSON.stringify(body):undefined});
+  if (res.status===401){ showGate("That passcode didn't work. Try again."); throw new Error("auth"); }
+  if (!res.ok){ let m="Couldn't reach the garden. Check your connection and try again."; try{ m=(await res.json()).error||m; }catch(e){} throw new Error(m); }
+  return res.status===204 ? null : res.json();
+}
+function fail(e){ if (e.message!=="auth") toast(e.message); }
+
+async function load(){
+  $("saveNote").textContent = "Loading your garden…";
+  const s = await api("GET","/api/state");
+  state = s; justAdded = null; render();
+  $("saveNote").textContent = "Saved to your Chore Garden database.";
+}
+
+// ---------- actions ----------
+async function complete(id){
+  if (busy) return; busy = true;
+  const c = state.chores.find(x=>x.id===id); if(!c){ busy=false; return; }
+  const before = levelInfo(state.pts).L;
+  try{
+    const e = await api("POST","/api/completions",{choreId:id});
+    state.log.push(e); state.pts += e.p; justAdded = e.id; render();
+    const after = levelInfo(state.pts);
+    if (after.L > before) toast(`Level ${after.L} · ${after.title}!`, true);
+    else toast(`+${e.p} pts · a ${FLOWERS[e.f].name.toLowerCase()} bloomed`);
+  }catch(e){ fail(e); } finally{ busy = false; }
+}
+async function undo(){
+  const e = state.log[state.log.length-1]; if(!e) return;
+  try{ await api("DELETE","/api/completions/"+e.id); state.log.pop(); state.pts = Math.max(0, state.pts-e.p); justAdded=null; render(); toast("Removed"); }
+  catch(err){ fail(err); }
+}
+
+$("chores").addEventListener("click", async ev=>{
+  const del = ev.target.closest("[data-del]");
+  if (del && editing){
+    const id = Number(del.dataset.del);
+    try{ await api("DELETE","/api/chores/"+id); state.chores = state.chores.filter(c=>c.id!==id); render(); }catch(e){ fail(e); }
+    return;
+  }
+  const b = ev.target.closest(".chore"); if (b && !editing) complete(Number(b.dataset.id));
+});
+$("log").addEventListener("click", ev=>{ if (ev.target.id==="undoBtn") undo(); });
+$("editBtn").addEventListener("click", ()=>{ editing=!editing; $("addForm").hidden=!editing; $("editBtn").textContent = editing?"Done editing":"Edit chores"; render(); });
+$("newDiff").innerHTML = DIFF.map(d=>`<option value="${d.key}">${d.label} · ${d.pts} pts</option>`).join("");
+$("newDiff").value = "2";
+$("newFlower").innerHTML = Object.entries(FLOWERS).map(([k,f])=>`<option value="${k}">${f.name}</option>`).join("");
+$("addForm").addEventListener("submit", async ev=>{
+  ev.preventDefault(); const name=$("newName").value.trim(); if(!name) return;
+  try{
+    const c = await api("POST","/api/chores",{name, diff:+$("newDiff").value, flower:$("newFlower").value});
+    state.chores.push(c); $("newName").value=""; render(); toast("Chore added");
+  }catch(e){ fail(e); }
+});
+
+// ---------- passcode gate ----------
+function showGate(msg){
+  $("gate").hidden = false; $("gateMsg").textContent = msg || ""; $("gateInput").value = ""; $("gateInput").focus();
+}
+$("gateForm").addEventListener("submit", async ev=>{
+  ev.preventDefault();
+  passcode = $("gateInput").value.trim();
+  try{ await load(); try{ localStorage.setItem(PASS_KEY, passcode); }catch(e){} $("gate").hidden = true; }
+  catch(e){ if (e.message!=="auth") $("gateMsg").textContent = e.message; }
+});
+
+render();
+if (passcode) load().catch(fail); else showGate();
+</script>
+</body>
+</html>
