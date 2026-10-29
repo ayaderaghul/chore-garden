@@ -99,6 +99,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .butterfly.rest .wl,.butterfly.rest .wr{animation-duration:.45s}
 @keyframes flap{from{transform:scaleX(1)}to{transform:scaleX(.25)}}
 .wxcredit a{color:inherit}
+.wxcredit .warn{color:var(--accent)}
 .flowers{display:flex;flex-wrap:wrap;align-items:flex-end;gap:2px 0;padding:62px 10px 0;min-height:190px;position:relative;z-index:1}
 .fl{width:40px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
 .fl svg{display:block;overflow:visible}
@@ -365,7 +366,7 @@ async function load(){
   const s = await api("GET","/api/state");
   state = s; justAdded = null; render();
   $("saveNote").textContent = "Saved to your Chore Garden database.";
-  fetchWeather();
+  if (!document.hidden) fetchWeather();
 }
 
 // ---------- actions ----------
@@ -446,24 +447,28 @@ $("gateForm").addEventListener("submit", async ev=>{
 
 // ---------- weather sky ----------
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-let wx = null, wxAt = 0;
+let wx = null, wxAt = 0, wxNotices = [];
 const WX_KINDS = ["clear","partly","cloudy","fog","drizzle","rain","snow","thunder"];
 
+// Only an open, visible page asks for weather; the server never fetches on its own.
 async function fetchWeather(){
+  if (document.hidden) return;
+  wxAt = Date.now();
   try{
-    const w = await api("GET","/api/weather");
-    wx = w; wxAt = Date.now(); applyWeather();
+    const r = await api("GET","/api/weather");
+    wx = r.weather || null; wxNotices = r.notices || []; applyWeather();
   }catch(e){ /* weather is decoration; the garden works without it */ }
 }
 function applyWeather(){
   const bed = $("bed");
   WX_KINDS.forEach(k=>bed.classList.toggle("w-"+k, wx && wx.kind===k));
   bed.classList.toggle("w-night", !!wx && !wx.isDay);
-  if (!wx){ $("wx").hidden = true; $("wxCredit").textContent = ""; return; }
+  const warn = wxNotices.map(n=>`<strong class="warn">${esc(n.service)}: ${esc(n.message)}</strong>`).join(" · ");
+  if (!wx){ $("wx").hidden = true; $("wxCredit").innerHTML = warn; startParticles(); return; }
   $("wx").hidden = false;
   $("wx").textContent = (wx.temp!=null? wx.temp+"° · " : "") + wx.label;
   $("wx").title = wx.place;
-  $("wxCredit").innerHTML = `Weather in ${esc(wx.place)} from <a href="${esc(wx.sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(wx.source)}</a>${wx.source==="MET Norway"?" (Norwegian Meteorological Institute)":""}, CC BY 4.0`;
+  $("wxCredit").innerHTML = `Weather in ${esc(wx.place)} from <a href="${esc(wx.sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(wx.source)}</a>${wx.source==="MET Norway"?" (Norwegian Meteorological Institute)":""}, CC BY 4.0${warn? "<br>"+warn : ""}`;
   startParticles();
   scheduleThunder();
 }

@@ -36,13 +36,39 @@ DATABASE_URL=postgres://... APP_PASSCODE=something npm start
 
 The garden sky follows the real weather: sun or moon and stars, drifting clouds, rain, snow, fog and lightning. On dry daytime weather a butterfly sometimes flies through and stops on a flower.
 
-Weather is fetched **by the server** (`weather.js`), so the browser never contacts a third party:
+### Public APIs called
 
-- **Open-Meteo** is the main source. Free for non-commercial use under 10,000 calls a day, with attribution. Results are cached for 15 minutes (at most ~96 calls a day).
-- **MET Norway** Locationforecast 2.0 is the fallback. Following its [terms](https://api.met.no/doc/TermsOfService): an identifying `User-Agent` with contact info, coordinates rounded to 4 decimals, no new request before the `Expires` time, `If-Modified-Since` on revalidation, and attribution.
-- If both fail, the last good result is reused and the server waits 5 minutes before trying again.
+| Service | Used for | Terms we follow |
+| --- | --- | --- |
+| [Open-Meteo](https://open-meteo.com/en/terms) forecast | Current weather (main source) | Non-commercial, under 10,000 calls/day. Results cached 15 min in the database (at most ~96 calls/day). Credited under the garden (CC BY 4.0). |
+| [MET Norway](https://api.met.no/doc/TermsOfService) Locationforecast 2.0 | Fallback | `User-Agent` names the app and a contact; coordinates rounded to 4 decimals; no request before `Expires`; `If-Modified-Since` with the stored `Last-Modified`. `Expires`, `Last-Modified` and the forecast are saved in the database, so they survive a restart. Credited under the garden (CC BY 4.0). |
 
-Both sources are credited under the garden (CC BY 4.0).
+Nothing else: no geocoding or map services, and no Google Fonts.
+
+- **Your IP stays private.** The browser never contacts these services; the server does.
+- **No fetching while the app isn't in use.** The server never polls. It only fetches when an open, visible page asks (on load, then every 30 minutes while visible).
+
+### No bombarding when a service fails
+
+Each service has its own pause, stored in the `api_state` table so restarts can't reset it (`services.js`):
+
+| What happened | Pause |
+| --- | --- |
+| Daily quota refused (e.g. Open-Meteo 429 "Daily API request limit exceeded") | Until 00:01 UTC, when the quota resets |
+| `Retry-After` header | As asked, up to 1 day |
+| 403 Forbidden | Page shows "**you are blocked**". Pause 1 hour; if still 403, 1 day; if still 403, stop calling |
+| 5xx, timeout, network error | 1, 2, 4, 8 … up to 60 minutes |
+| 400 or 404 | No pause |
+
+A success clears that service's pause. While a service is paused, the other one is tried, and if both are unavailable the last saved weather is shown.
+
+To unblock a stopped service after fixing the cause, run in Neon:
+
+```sql
+DELETE FROM api_state WHERE key = 'service:MET Norway';   -- or 'service:Open-Meteo'
+```
+
+Tests for these rules: `node test/policy.test.js`.
 
 ## Fonts
 

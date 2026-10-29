@@ -2,7 +2,7 @@ const express = require("express");
 const path = require("path");
 const crypto = require("crypto");
 const { Pool } = require("pg");
-const { getWeather } = require("./weather");
+const weather = require("./weather");
 
 const { DATABASE_URL, APP_PASSCODE, PORT = 3000 } = process.env;
 if (!DATABASE_URL) throw new Error("DATABASE_URL is not set");
@@ -31,6 +31,12 @@ CREATE TABLE IF NOT EXISTS completions (
   done_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS completions_done_at_idx ON completions (done_at);
+-- Small key/value store for API politeness state (pauses, MET Expires/Last-Modified, cached weather).
+CREATE TABLE IF NOT EXISTS api_state (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 `;
 
 const DEFAULT_CHORES = [
@@ -81,10 +87,23 @@ const wrap = fn => (req, res) => fn(req, res).catch(err => {
   res.status(500).json({ error: "Something went wrong on the server" });
 });
 
-app.get("/api/weather", async (_req, res) => {
-  try { res.set("Cache-Control", "private, max-age=600"); res.json(await getWeather()); }
-  catch (e) { res.status(503).json({ error: e.message }); }
-});
+const store = {
+  async get(key) {
+    const { rows } = await pool.query("SELECT value FROM api_state WHERE key = $1", [key]);
+    return rows.length ? rows[0].value : null;
+  },
+  async set(key, value) {
+    await pool.query(
+      `INSERT INTO api_state (key, value, updated_at) VALUES ($1, $2, now())
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`, [key, JSON.stringify(value)]);
+  },
+};
+
+// Called only by an open, visible page. The server never fetches weather on its own.
+app.get("/api/weather", wrap(async (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.json(await weather.getWeather());
+}));
 
 const toEntry = r => ({ id: r.id, c: r.chore_id, n: r.name, f: r.flower, d: r.diff, p: r.pts, t: new Date(r.done_at).getTime() });
 const toChore = r => ({ id: r.id, name: r.name, diff: r.diff, flower: r.flower });
@@ -150,5 +169,6 @@ app.delete("/api/chores/:id", wrap(async (req, res) => {
 }));
 
 migrate()
+  .then(() => weather.init(store))
   .then(() => app.listen(PORT, () => console.log(`Chore Garden listening on ${PORT}`)))
   .catch(err => { console.error("Migration failed", err); process.exit(1); });
