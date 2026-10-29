@@ -96,16 +96,34 @@ app.delete("/api/completions/:id", wrap(async (req, res) => {
   res.status(204).end();
 }));
 
+// Returns the cleaned chore fields, or an error message to send back.
+function readChore(body) {
+  const name = String(body.name || "").trim().slice(0, 60);
+  const diff = Number(body.diff);
+  const flower = String(body.flower || "");
+  if (!name) return { error: "Give the chore a name" };
+  if (!POINTS[diff]) return { error: "Pick a difficulty" };
+  if (!FLOWERS.includes(flower)) return { error: "Pick a flower" };
+  return { name, diff, flower };
+}
+
 app.post("/api/chores", wrap(async (req, res) => {
-  const name = String(req.body.name || "").trim().slice(0, 60);
-  const diff = Number(req.body.diff);
-  const flower = String(req.body.flower || "");
-  if (!name) return res.status(400).json({ error: "Give the chore a name" });
-  if (!POINTS[diff]) return res.status(400).json({ error: "Pick a difficulty" });
-  if (!FLOWERS.includes(flower)) return res.status(400).json({ error: "Pick a flower" });
+  const c = readChore(req.body);
+  if (c.error) return res.status(400).json(c);
   const { rows } = await pool.query(
-    "INSERT INTO chores (name, diff, flower) VALUES ($1, $2, $3) RETURNING id, name, diff, flower", [name, diff, flower]);
+    "INSERT INTO chores (name, diff, flower) VALUES ($1, $2, $3) RETURNING id, name, diff, flower", [c.name, c.diff, c.flower]);
   res.status(201).json(toChore(rows[0]));
+}));
+
+// Editing a chore changes future completions only; past flowers keep the name, flower and points they were logged with.
+app.put("/api/chores/:id", wrap(async (req, res) => {
+  const c = readChore(req.body);
+  if (c.error) return res.status(400).json(c);
+  const { rows } = await pool.query(
+    "UPDATE chores SET name = $1, diff = $2, flower = $3 WHERE id = $4 RETURNING id, name, diff, flower",
+    [c.name, c.diff, c.flower, Number(req.params.id)]);
+  if (!rows.length) return res.status(404).json({ error: "That chore no longer exists" });
+  res.json(toChore(rows[0]));
 }));
 
 app.delete("/api/chores/:id", wrap(async (req, res) => {

@@ -75,13 +75,18 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .chore .meta{display:flex;gap:8px;align-items:center;font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
 .pips{display:inline-flex;gap:3px}.pips i{width:7px;height:7px;border-radius:50%;background:var(--line)}.pips i.on{background:var(--gold)}
 .del{position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--bg);font-size:1rem;line-height:1;display:grid;place-items:center}
-.chores:not(.editing) .del{display:none}
+.edit{position:absolute;top:6px;right:40px;width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--bg);font-size:.85rem;line-height:1;display:grid;place-items:center}
+.chores:not(.editing) .del,.chores:not(.editing) .edit{display:none}
+.chores.editing .chore{padding-right:76px}
+.chore.selected{border-color:var(--accent);border-style:solid!important;box-shadow:0 0 0 2px var(--accent) inset}
 .chores.editing .chore{border-style:dashed}
 
-form.add{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;background:var(--paper);border:1px dashed var(--moss);border-radius:14px;padding:10px}
+form.add{display:grid;grid-template-columns:1fr auto auto auto auto;gap:8px;align-items:center;background:var(--paper);border:1px dashed var(--moss);border-radius:14px;padding:10px}
 form.add input,form.add select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 10px;min-width:0}
 .btn{background:var(--moss);color:var(--paper);border:0;border-radius:10px;padding:9px 14px;font-weight:600}
-@media (max-width:520px){form.add{grid-template-columns:1fr 1fr}form.add input{grid-column:1/-1}form.add .btn{grid-column:1/-1}}
+.formtitle{grid-column:1/-1;font-weight:600;font-size:.9rem;color:var(--muted)}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+@media (max-width:520px){form.add{grid-template-columns:1fr 1fr}form.add input{grid-column:1/-1}form.add .btn{grid-column:auto}form.add:has(#formCancel[hidden]) #formSubmit{grid-column:1/-1}}
 
 /* collection + log */
 .coll{display:flex;flex-wrap:wrap;gap:8px}
@@ -142,10 +147,12 @@ form.add input,form.add select{font:inherit;color:var(--ink);background:var(--bg
   <section style="display:flex;flex-direction:column;gap:12px">
     <div class="head"><h2>Tap a chore when it's done</h2><button class="link" id="editBtn" type="button">Edit chores</button></div>
     <form class="add" id="addForm" hidden>
-      <input id="newName" placeholder="New chore, e.g. Descale kettle" maxlength="60" required>
+      <span class="formtitle" id="formTitle">Add a new chore, or tap ✎ on a chore to change it</span>
+      <input id="newName" placeholder="New chore, e.g. Descale kettle" maxlength="60" required aria-label="Chore name">
       <select id="newDiff" aria-label="Difficulty"></select>
       <select id="newFlower" aria-label="Flower"></select>
-      <button class="btn" type="submit">Add</button>
+      <button class="btn" type="submit" id="formSubmit">Add</button>
+      <button class="btn ghost" type="button" id="formCancel" hidden>Cancel</button>
     </form>
     <div class="chores" id="chores"></div>
   </section>
@@ -234,7 +241,7 @@ function levelInfo(pts){
 
 // ---------- state ----------
 let state = {chores: [], log: [], pts: 0};
-let justAdded = null, editing = false;
+let justAdded = null, editing = false, editingId = null;
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const dayKey = t => { const d=new Date(t); return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(); };
@@ -265,9 +272,10 @@ function render(){
 
   $("chores").className = "chores" + (editing?" editing":"");
   $("chores").innerHTML = state.chores.map(c=>{ const d=diffOf(c.diff);
-    return `<button type="button" class="chore" data-id="${c.id}" aria-label="Done: ${esc(c.name)}, ${d.pts} points">
+    return `<button type="button" class="chore${c.id===editingId?" selected":""}" data-id="${c.id}" aria-label="Done: ${esc(c.name)}, ${d.pts} points">
       ${iconSVG(c.flower)}<span class="nm">${esc(c.name)}</span>
       <span class="meta"><span class="pips">${DIFF.map(x=>`<i class="${x.key<=c.diff?"on":""}"></i>`).join("")}</span>+${d.pts} pts</span>
+      <span class="edit" data-edit="${c.id}" role="button" aria-label="Change ${esc(c.name)}">✎</span>
       <span class="del" data-del="${c.id}" role="button" aria-label="Remove ${esc(c.name)}">×</span></button>`;}).join("")
     || `<p class="note">No chores yet. Use Edit chores to add one.</p>`;
 
@@ -326,24 +334,48 @@ async function undo(){
 }
 
 $("chores").addEventListener("click", async ev=>{
+  const ed = ev.target.closest("[data-edit]");
+  if (ed && editing){ startEdit(Number(ed.dataset.edit)); return; }
   const del = ev.target.closest("[data-del]");
   if (del && editing){
     const id = Number(del.dataset.del);
-    try{ await api("DELETE","/api/chores/"+id); state.chores = state.chores.filter(c=>c.id!==id); render(); }catch(e){ fail(e); }
+    try{ await api("DELETE","/api/chores/"+id); state.chores = state.chores.filter(c=>c.id!==id); if (editingId===id) resetForm(); render(); }catch(e){ fail(e); }
     return;
   }
   const b = ev.target.closest(".chore"); if (b) complete(Number(b.dataset.id));
 });
 $("log").addEventListener("click", ev=>{ if (ev.target.id==="undoBtn") undo(); });
-$("editBtn").addEventListener("click", ()=>{ editing=!editing; $("addForm").hidden=!editing; $("editBtn").textContent = editing?"Done editing":"Edit chores"; render(); });
+$("editBtn").addEventListener("click", ()=>{ editing=!editing; $("addForm").hidden=!editing; $("editBtn").textContent = editing?"Done editing":"Edit chores"; resetForm(); render(); });
+
+function startEdit(id){
+  const c = state.chores.find(x=>x.id===id); if(!c) return;
+  editingId = id;
+  $("formTitle").textContent = `Changing "${c.name}"`;
+  $("newName").value = c.name; $("newDiff").value = String(c.diff); $("newFlower").value = c.flower;
+  $("formSubmit").textContent = "Save changes"; $("formCancel").hidden = false;
+  render(); $("addForm").scrollIntoView({block:"nearest", behavior:"smooth"}); $("newName").focus();
+}
+function resetForm(){
+  editingId = null;
+  $("formTitle").textContent = "Add a new chore, or tap ✎ on a chore to change it";
+  $("newName").value = ""; $("newDiff").value = "2"; $("newFlower").value = "daisy";
+  $("formSubmit").textContent = "Add"; $("formCancel").hidden = true;
+}
+$("formCancel").addEventListener("click", ()=>{ resetForm(); render(); });
 $("newDiff").innerHTML = DIFF.map(d=>`<option value="${d.key}">${d.label} · ${d.pts} pts</option>`).join("");
 $("newDiff").value = "2";
 $("newFlower").innerHTML = Object.entries(FLOWERS).map(([k,f])=>`<option value="${k}">${f.name}</option>`).join("");
 $("addForm").addEventListener("submit", async ev=>{
   ev.preventDefault(); const name=$("newName").value.trim(); if(!name) return;
+  const body = {name, diff:+$("newDiff").value, flower:$("newFlower").value};
   try{
-    const c = await api("POST","/api/chores",{name, diff:+$("newDiff").value, flower:$("newFlower").value});
-    state.chores.push(c); $("newName").value=""; render(); toast("Chore added");
+    if (editingId!==null){
+      const c = await api("PUT","/api/chores/"+editingId, body);
+      state.chores = state.chores.map(x=>x.id===c.id?c:x); resetForm(); render(); toast("Chore updated");
+    } else {
+      const c = await api("POST","/api/chores", body);
+      state.chores.push(c); resetForm(); render(); toast("Chore added");
+    }
   }catch(e){ fail(e); }
 });
 
