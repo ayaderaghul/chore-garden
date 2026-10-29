@@ -2,6 +2,7 @@ const express = require("express");
 const path = require("path");
 const crypto = require("crypto");
 const { Pool } = require("pg");
+const { getWeather } = require("./weather");
 
 const { DATABASE_URL, APP_PASSCODE, PORT = 3000 } = process.env;
 if (!DATABASE_URL) throw new Error("DATABASE_URL is not set");
@@ -52,6 +53,18 @@ async function migrate() {
 
 const app = express();
 app.use(express.json({ limit: "10kb" }));
+
+// The page may only load things from this server: no Google Fonts, no CDNs, no third-party calls.
+// (Weather is fetched server-side, see weather.js.)
+app.use((_req, res, next) => {
+  res.set("Content-Security-Policy",
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
+    "font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+  res.set("Referrer-Policy", "no-referrer");
+  res.set("X-Content-Type-Options", "nosniff");
+  next();
+});
+app.use("/fonts", express.static(path.join(__dirname, "public/fonts"), { maxAge: "365d", immutable: true }));
 app.use(express.static(path.join(__dirname, "public")));
 app.get("/healthz", (_req, res) => res.send("ok"));
 
@@ -66,6 +79,11 @@ app.use("/api", (req, res, next) => {
 const wrap = fn => (req, res) => fn(req, res).catch(err => {
   console.error(err);
   res.status(500).json({ error: "Something went wrong on the server" });
+});
+
+app.get("/api/weather", async (_req, res) => {
+  try { res.set("Cache-Control", "private, max-age=600"); res.json(await getWeather()); }
+  catch (e) { res.status(503).json({ error: e.message }); }
 });
 
 const toEntry = r => ({ id: r.id, c: r.chore_id, n: r.name, f: r.flower, d: r.diff, p: r.pts, t: new Date(r.done_at).getTime() });

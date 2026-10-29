@@ -5,9 +5,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#3f6b45">
 <title>Chore Garden</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Outfit:wght@400;500;600;700&display=swap">
+<link rel="preload" href="/fonts/outfit-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/bagel-fat-one-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+/* Fonts are served from this server (public/fonts), SIL Open Font License — see the LICENSE files there. */
+@font-face{font-family:"Bagel Fat One";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/bagel-fat-one-latin-400-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Bagel Fat One";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/bagel-fat-one-latin-ext-400-normal.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:"Outfit";font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/outfit-latin-wght-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Outfit";font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/outfit-latin-ext-wght-normal.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+
 /* base reset (the Claude preview supplied these; a standalone page needs its own) */
 [hidden]{display:none!important}
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -18,15 +24,21 @@ img{max-width:100%}
 :root{
   --bg:#e7eee1; --paper:#f6f9f1; --ink:#1d3324; --muted:#5d7262; --line:#c9d6c1;
   --moss:#3f6b45; --soil:#6b4a33; --soil-2:#55392a; --sky:#d6e6d0; --accent:#d9546b; --gold:#e3a72f;
+  --sky-clear:#8fcdf0; --sky-partly:#a9d3ec; --sky-cloudy:#c2cdd3; --sky-rain:#9badb8; --sky-storm:#7a8a96; --sky-snow:#e3ebf1; --sky-fog:#d2d8d6; --sky-night:#24305a;
+  --cloud:#ffffff; --cloud-grey:#a9b4ba; --drop:#4f6f88; --flake:#ffffff;
   --display:"Bagel Fat One","Arial Rounded MT Bold",system-ui,sans-serif;
   --body:"Outfit",system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#111c15; --paper:#18261d; --ink:#e4eedf; --muted:#9db29f; --line:#2d4233;
-  --moss:#7fb886; --soil:#4a3324; --soil-2:#3a271b; --sky:#16261c; --accent:#f07a8e; --gold:#f2c056; color-scheme:dark}}
+  --moss:#7fb886; --soil:#4a3324; --soil-2:#3a271b; --sky:#16261c; --accent:#f07a8e; --gold:#f2c056;
+  --sky-clear:#1d4a66; --sky-partly:#24465a; --sky-cloudy:#2c3a42; --sky-rain:#26333b; --sky-storm:#1c252c; --sky-snow:#3a4752; --sky-fog:#2f3836; --sky-night:#0b1226;
+  --cloud:#56656e; --cloud-grey:#3b464d; --drop:#9cc3e0; --flake:#e8f0f6; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#111c15; --paper:#18261d; --ink:#e4eedf; --muted:#9db29f; --line:#2d4233;
-  --moss:#7fb886; --soil:#4a3324; --soil-2:#3a271b; --sky:#16261c; --accent:#f07a8e; --gold:#f2c056; color-scheme:dark}
+  --moss:#7fb886; --soil:#4a3324; --soil-2:#3a271b; --sky:#16261c; --accent:#f07a8e; --gold:#f2c056;
+  --sky-clear:#1d4a66; --sky-partly:#24465a; --sky-cloudy:#2c3a42; --sky-rain:#26333b; --sky-storm:#1c252c; --sky-snow:#3a4752; --sky-fog:#2f3836; --sky-night:#0b1226;
+  --cloud:#56656e; --cloud-grey:#3b464d; --drop:#9cc3e0; --flake:#e8f0f6; color-scheme:dark}
 
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;
@@ -52,8 +64,42 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 @media (max-width:420px){.stats{grid-template-columns:repeat(2,1fr)}}
 
 /* garden */
-.bed{position:relative;border-radius:18px;overflow:hidden;background:var(--sky);border:1px solid var(--line)}
-.flowers{display:flex;flex-wrap:wrap;align-items:flex-end;gap:2px 0;padding:16px 10px 0;min-height:150px;position:relative;z-index:1}
+.bed{--wx-top:var(--sky);position:relative;border-radius:18px;overflow:hidden;background:linear-gradient(180deg,var(--wx-top),var(--sky) 92%);border:1px solid var(--line);transition:background .8s}
+.bed.w-clear{--wx-top:var(--sky-clear)}.bed.w-partly{--wx-top:var(--sky-partly)}.bed.w-cloudy{--wx-top:var(--sky-cloudy)}
+.bed.w-drizzle,.bed.w-rain{--wx-top:var(--sky-rain)}.bed.w-thunder{--wx-top:var(--sky-storm)}.bed.w-snow{--wx-top:var(--sky-snow)}.bed.w-fog{--wx-top:var(--sky-fog)}
+.bed.w-night{--wx-top:var(--sky-night)}
+.sky{position:absolute;inset:0 0 26px;z-index:0;pointer-events:none}
+.sun,.moon{position:absolute;top:14px;right:22px;width:34px;height:34px;border-radius:50%;opacity:0;transition:opacity .8s}
+.sun{background:var(--gold);box-shadow:0 0 0 6px color-mix(in srgb,var(--gold) 30%,transparent),0 0 28px 10px color-mix(in srgb,var(--gold) 35%,transparent)}
+.moon{background:#f3efd9;box-shadow:inset -9px -3px 0 0 #d9d2b0,0 0 18px 4px rgba(243,239,217,.25)}
+.bed.w-clear:not(.w-night) .sun,.bed.w-partly:not(.w-night) .sun{opacity:1}
+.bed.w-night.w-clear .moon,.bed.w-night.w-partly .moon{opacity:1}
+.stars{position:absolute;inset:0;opacity:0;transition:opacity .8s;background-image:radial-gradient(1.4px 1.4px at 12% 20%,#fff 50%,transparent 51%),radial-gradient(1.2px 1.2px at 34% 9%,#fff 50%,transparent 51%),radial-gradient(1.5px 1.5px at 58% 26%,#fff 50%,transparent 51%),radial-gradient(1px 1px at 71% 12%,#fff 50%,transparent 51%),radial-gradient(1.3px 1.3px at 86% 34%,#fff 50%,transparent 51%),radial-gradient(1px 1px at 22% 40%,#fff 50%,transparent 51%),radial-gradient(1.2px 1.2px at 46% 44%,#fff 50%,transparent 51%)}
+.bed.w-night.w-clear .stars,.bed.w-night.w-partly .stars{opacity:.85}
+.cloud{position:absolute;width:64px;height:20px;border-radius:20px;background:var(--cloud);opacity:0;transition:opacity .8s;animation:drift linear infinite}
+.cloud::before,.cloud::after{content:"";position:absolute;background:inherit;border-radius:50%}
+.cloud::before{width:30px;height:30px;left:10px;top:-14px}.cloud::after{width:24px;height:24px;left:30px;top:-9px}
+.cloud.c1{top:22px;animation-duration:70s;animation-delay:-20s}
+.cloud.c2{top:46px;transform:scale(.8);animation-duration:95s;animation-delay:-60s}
+.cloud.c3{top:12px;transform:scale(1.25);animation-duration:120s;animation-delay:-5s}
+@keyframes drift{from{left:-90px}to{left:calc(100% + 20px)}}
+.bed.w-partly .c1,.bed.w-partly .c2{opacity:.9}
+.bed.w-cloudy .cloud,.bed.w-fog .cloud{opacity:.95}
+.bed.w-drizzle .cloud,.bed.w-rain .cloud,.bed.w-thunder .cloud,.bed.w-snow .cloud{opacity:1;background:var(--cloud-grey)}
+.fog{position:absolute;inset:0 0 26px;z-index:2;pointer-events:none;opacity:0;transition:opacity .8s;background:linear-gradient(180deg,color-mix(in srgb,var(--sky-fog) 70%,transparent),color-mix(in srgb,var(--sky-fog) 35%,transparent))}
+.bed.w-fog .fog{opacity:1}
+#wxCanvas{position:absolute;inset:0 0 26px;z-index:2;pointer-events:none;width:100%;height:calc(100% - 26px)}
+.flash{position:absolute;inset:0;z-index:4;pointer-events:none;background:#fff;opacity:0}
+.flash.on{animation:flash .6s ease-out}
+@keyframes flash{0%,40%{opacity:0}10%{opacity:.55}50%{opacity:.3}100%{opacity:0}}
+.wx{position:absolute;left:10px;top:8px;z-index:3;font-size:.8rem;font-weight:600;padding:3px 10px;border-radius:99px;background:color-mix(in srgb,var(--paper) 82%,transparent);color:var(--ink);font-variant-numeric:tabular-nums}
+.butterfly{position:absolute;left:0;top:0;z-index:3;width:30px;height:24px;pointer-events:none;will-change:transform}
+.butterfly svg{display:block;width:100%;height:100%;overflow:visible}
+.butterfly .wl,.butterfly .wr{transform-box:view-box;transform-origin:50% 50%;animation:flap .16s ease-in-out infinite alternate}
+.butterfly.rest .wl,.butterfly.rest .wr{animation-duration:.45s}
+@keyframes flap{from{transform:scaleX(1)}to{transform:scaleX(.25)}}
+.wxcredit a{color:inherit}
+.flowers{display:flex;flex-wrap:wrap;align-items:flex-end;gap:2px 0;padding:62px 10px 0;min-height:190px;position:relative;z-index:1}
 .fl{width:40px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
 .fl svg{display:block;overflow:visible}
 .fl.new{animation:grow .9s cubic-bezier(.2,1.4,.4,1) both;transform-origin:50% 100%}
@@ -61,7 +107,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .soil{height:26px;background:repeating-linear-gradient(90deg,var(--soil) 0 14px,var(--soil-2) 14px 16px);position:relative;z-index:0}
 .empty{padding:28px 18px;color:var(--muted);text-align:center;width:100%;align-self:center}
 .empty strong{color:var(--ink)}
-.more{position:absolute;right:10px;top:8px;font-size:.75rem;color:var(--muted);z-index:2}
+.more{position:absolute;right:10px;bottom:30px;font-size:.75rem;color:var(--muted);z-index:3}
 
 /* chores */
 .head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
@@ -106,7 +152,7 @@ form.add input,form.add select{font:inherit;color:var(--ink);background:var(--bg
 .toast.lv{background:var(--gold);color:#2a1d05;font-family:var(--display);font-weight:400;font-size:1.1rem}
 @keyframes pop{from{transform:translate(-50%,20px);opacity:0}}
 .note{font-size:.78rem;color:var(--muted)}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.cloud.c1{left:8%}.cloud.c2{left:42%}.cloud.c3{left:66%}}
 .gate{position:fixed;inset:0;background:var(--bg);display:grid;place-items:center;z-index:30;padding:max(16px,env(safe-area-inset-left,0px))}
 .gatecard{display:flex;flex-direction:column;gap:10px;width:min(340px,100%);background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:20px}
 .gatecard input{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px}
@@ -137,11 +183,18 @@ form.add input,form.add select{font:inherit;color:var(--ink);background:var(--bg
   </section>
 
   <section aria-label="Your garden">
-    <div class="bed">
+    <div class="bed" id="bed">
+      <div class="sky" aria-hidden="true"><div class="stars"></div><div class="sun"></div><div class="moon"></div><div class="cloud c1"></div><div class="cloud c2"></div><div class="cloud c3"></div></div>
+      <span class="wx" id="wx" hidden></span>
       <span class="more" id="more"></span>
       <div class="flowers" id="garden"></div>
+      <canvas id="wxCanvas" aria-hidden="true"></canvas>
+      <div class="fog" aria-hidden="true"></div>
+      <div class="butterfly" id="butterfly" hidden aria-hidden="true"></div>
+      <div class="flash" id="flash" aria-hidden="true"></div>
       <div class="soil"></div>
     </div>
+    <p class="note wxcredit" id="wxCredit" style="margin:6px 2px 0"></p>
   </section>
 
   <section style="display:flex;flex-direction:column;gap:12px">
@@ -312,6 +365,7 @@ async function load(){
   const s = await api("GET","/api/state");
   state = s; justAdded = null; render();
   $("saveNote").textContent = "Saved to your Chore Garden database.";
+  fetchWeather();
 }
 
 // ---------- actions ----------
@@ -390,7 +444,139 @@ $("gateForm").addEventListener("submit", async ev=>{
   catch(e){ if (e.message!=="auth") $("gateMsg").textContent = e.message; }
 });
 
+// ---------- weather sky ----------
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+let wx = null, wxAt = 0;
+const WX_KINDS = ["clear","partly","cloudy","fog","drizzle","rain","snow","thunder"];
+
+async function fetchWeather(){
+  try{
+    const w = await api("GET","/api/weather");
+    wx = w; wxAt = Date.now(); applyWeather();
+  }catch(e){ /* weather is decoration; the garden works without it */ }
+}
+function applyWeather(){
+  const bed = $("bed");
+  WX_KINDS.forEach(k=>bed.classList.toggle("w-"+k, wx && wx.kind===k));
+  bed.classList.toggle("w-night", !!wx && !wx.isDay);
+  if (!wx){ $("wx").hidden = true; $("wxCredit").textContent = ""; return; }
+  $("wx").hidden = false;
+  $("wx").textContent = (wx.temp!=null? wx.temp+"° · " : "") + wx.label;
+  $("wx").title = wx.place;
+  $("wxCredit").innerHTML = `Weather in ${esc(wx.place)} from <a href="${esc(wx.sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(wx.source)}</a>${wx.source==="MET Norway"?" (Norwegian Meteorological Institute)":""}, CC BY 4.0`;
+  startParticles();
+  scheduleThunder();
+}
+setInterval(()=>{ if (!document.hidden && passcode) fetchWeather(); }, 30*60*1000);
+document.addEventListener("visibilitychange", ()=>{ if (!document.hidden && passcode && Date.now()-wxAt > 30*60*1000) fetchWeather(); });
+
+// rain / snow on a canvas
+const cv = $("wxCanvas"), cx = cv.getContext("2d");
+let parts = [], partsRaf = 0, lastT = 0;
+function sizeCanvas(){
+  const r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio||1);
+  cv.width = Math.max(1, Math.round(r.width*dpr)); cv.height = Math.max(1, Math.round(r.height*dpr));
+  cx.setTransform(dpr,0,0,dpr,0,0);
+}
+new ResizeObserver(()=>{ sizeCanvas(); if (!partsRaf) drawParticles(0); }).observe(cv);
+function startParticles(){
+  cancelAnimationFrame(partsRaf); partsRaf = 0;
+  const k = wx && wx.kind, n = wx ? ({drizzle:[0,35,55,70], rain:[0,60,100,150], thunder:[0,120,120,150], snow:[0,30,60,95]}[k]||[0])[wx.intensity||1] || 0 : 0;
+  const W = cv.clientWidth||300, H = cv.clientHeight||200, snow = k==="snow";
+  parts = Array.from({length:n}, ()=>({x:Math.random()*W, y:Math.random()*H, v: snow? 18+Math.random()*22 : 380+Math.random()*220, r: snow? 1.2+Math.random()*1.8 : 0, ph: Math.random()*6.28}));
+  sizeCanvas(); lastT = performance.now();
+  if (!n){ cx.clearRect(0,0,cv.width,cv.height); return; }
+  if (reduceMotion){ drawParticles(0); return; }
+  const tick = t => { const dt = Math.min(.05,(t-lastT)/1000); lastT = t; drawParticles(dt); partsRaf = requestAnimationFrame(tick); };
+  partsRaf = requestAnimationFrame(tick);
+}
+function drawParticles(dt){
+  const W = cv.clientWidth, H = cv.clientHeight; cx.clearRect(0,0,W,H);
+  if (!parts.length) return;
+  const css = getComputedStyle(document.documentElement), snow = wx && wx.kind==="snow";
+  cx.fillStyle = cx.strokeStyle = (snow? css.getPropertyValue("--flake") : css.getPropertyValue("--drop")).trim() || "#7aa";
+  cx.globalAlpha = snow? .9 : .55; cx.lineWidth = 1.2; cx.lineCap = "round";
+  cx.beginPath();
+  for (const p of parts){
+    p.y += p.v*dt; if (snow){ p.ph += dt*1.5; p.x += Math.sin(p.ph)*10*dt; } else p.x -= p.v*dt*.12;
+    if (p.y > H+12){ p.y = -12; p.x = Math.random()*W*1.1; }
+    if (p.x < -10) p.x = W+5; if (p.x > W+10) p.x = -5;
+    if (snow){ cx.moveTo(p.x+p.r,p.y); cx.arc(p.x,p.y,p.r,0,6.283); } else { cx.moveTo(p.x,p.y); cx.lineTo(p.x+1.4,p.y-11); }
+  }
+  snow? cx.fill() : cx.stroke(); cx.globalAlpha = 1;
+}
+document.addEventListener("visibilitychange", ()=>{ if (document.hidden){ cancelAnimationFrame(partsRaf); partsRaf=0; } else if (wx) startParticles(); });
+
+// thunder flashes
+let thunderT = 0;
+function scheduleThunder(){
+  clearTimeout(thunderT);
+  if (!wx || wx.kind!=="thunder" || reduceMotion) return;
+  thunderT = setTimeout(()=>{ const f=$("flash"); f.classList.remove("on"); void f.offsetWidth; f.classList.add("on"); scheduleThunder(); }, 7000+Math.random()*14000);
+}
+
+// ---------- butterfly ----------
+const BF_COLORS = [["#f08a24","#2b1d14"],["#5b8fe6","#1f2a44"],["#f2cf3d","#3a2d10"],["#e86f9a","#3b1726"]];
+function butterflySVG([wing, edge]){
+  const half = `<path d="M0,-1 C-5,-13 -18,-15 -17,-5 C-16,1 -8,2 0,1 Z" fill="${wing}" stroke="${edge}" stroke-width="1.4"/>
+    <path d="M0,1 C-8,2 -15,7 -11,12 C-8,15 -3,9 0,3 Z" fill="${wing}" stroke="${edge}" stroke-width="1.4"/>
+    <circle cx="-11" cy="-7" r="1.6" fill="#fff"/><circle cx="-7" cy="8" r="1.1" fill="#fff"/>`;
+  return `<svg viewBox="-20 -16 40 32"><g class="wl">${half}</g><g class="wr"><g transform="scale(-1,1)">${half}</g></g>
+    <ellipse cx="0" cy="1" rx="1.6" ry="7" fill="${edge}"/><path d="M0,-6 q-2,-5 -5,-7 M0,-6 q2,-5 5,-7" stroke="${edge}" stroke-width=".9" fill="none"/></svg>`;
+}
+let bfTimer = 0, bfFlying = false;
+function canFly(){
+  if (reduceMotion || document.hidden || bfFlying) return false;
+  if (!wx) return true;
+  return wx.isDay && ["clear","partly","cloudy"].includes(wx.kind);
+}
+function scheduleButterfly(first){
+  clearTimeout(bfTimer);
+  bfTimer = setTimeout(()=>{ if (canFly()) fly(); else scheduleButterfly(); }, first? 2500+Math.random()*3500 : 18000+Math.random()*40000);
+}
+const ease = t => t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+function fly(){
+  const bed = $("bed"), el = $("butterfly");
+  const W = bed.clientWidth, H = bed.clientHeight - 26;
+  el.innerHTML = butterflySVG(BF_COLORS[Math.floor(Math.random()*BF_COLORS.length)]);
+  const ltr = Math.random() < .5, x0 = ltr? -40 : W+10, x2 = ltr? W+10 : -40;
+  const pts = [{x:x0, y:20+Math.random()*H*.35, hold:0}];
+  const fls = [...document.querySelectorAll("#garden .fl")];
+  if (fls.length){
+    // visit one or two flowers on the way across
+    const picks = fls.sort(()=>Math.random()-.5).slice(0, Math.random()<.4?2:1)
+      .map(f=>({x:f.offsetLeft+5, y:Math.max(4, f.offsetTop-6), hold:900+Math.random()*1300}))
+      .sort((a,b)=> ltr? a.x-b.x : b.x-a.x);
+    pts.push(...picks);
+  } else pts.push({x:W*(.3+Math.random()*.4), y:30+Math.random()*H*.3, hold:0});
+  pts.push({x:x2, y:10+Math.random()*H*.4, hold:0});
+  // build timed legs at ~75px/s
+  const legs = [];
+  for (let i=1;i<pts.length;i++){
+    const a=pts[i-1], b=pts[i], d=Math.hypot(b.x-a.x,b.y-a.y);
+    legs.push({a,b,dur:Math.max(700,d/75*1000)});
+    if (b.hold) legs.push({a:b,b,dur:b.hold,rest:true});
+  }
+  bfFlying = true; el.hidden = false;
+  let leg = 0, legStart = performance.now(), t0 = legStart;
+  const step = now => {
+    if (document.hidden){ el.hidden = true; bfFlying = false; scheduleButterfly(); return; }
+    let L = legs[leg], u = (now-legStart)/L.dur;
+    while (u >= 1){ leg++; if (leg>=legs.length){ el.hidden = true; bfFlying = false; scheduleButterfly(); return; } legStart += L.dur; L = legs[leg]; u = (now-legStart)/L.dur; }
+    const e = ease(Math.max(0,u)), s = (now-t0)/1000;
+    const wob = L.rest ? Math.sin(s*5)*1.5 : Math.sin(s*7)*7 + Math.sin(s*2.3)*4;
+    const x = L.a.x + (L.b.x-L.a.x)*e, y = L.a.y + (L.b.y-L.a.y)*e + wob;
+    const dir = L.rest ? (ltr?1:-1) : (L.b.x>=L.a.x ? 1 : -1);
+    el.classList.toggle("rest", !!L.rest);
+    el.style.transform = `translate(${x}px,${y}px) scaleX(${dir}) rotate(${L.rest? 0 : Math.sin(s*3)*8}deg)`;
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+document.addEventListener("visibilitychange", ()=>{ if (!document.hidden && !bfFlying) scheduleButterfly(); });
+
 render();
+scheduleButterfly(true);
 if (passcode) load().catch(fail); else showGate();
 </script>
 </body>
