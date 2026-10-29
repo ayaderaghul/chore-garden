@@ -332,7 +332,7 @@ $("chores").addEventListener("click", async ev=>{
     try{ await api("DELETE","/api/chores/"+id); state.chores = state.chores.filter(c=>c.id!==id); render(); }catch(e){ fail(e); }
     return;
   }
-  const b = ev.target.closest(".chore"); if (b && !editing) complete(Number(b.dataset.id));
+  const b = ev.target.closest(".chore"); if (b) complete(Number(b.dataset.id));
 });
 $("log").addEventListener("click", ev=>{ if (ev.target.id==="undoBtn") undo(); });
 $("editBtn").addEventListener("click", ()=>{ editing=!editing; $("addForm").hidden=!editing; $("editBtn").textContent = editing?"Done editing":"Edit chores"; render(); });
