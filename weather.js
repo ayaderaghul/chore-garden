@@ -156,4 +156,11 @@ async function getWeather() {
   return { weather: cached, stale, notices: services.notices(SERVICES) };
 }
 
-module.exports = { init, getWeather, SERVICES, _test: { fromWmo, fromMetSymbol, sunUp } };
+// The weather we already have, without contacting any service. Used to stamp each completion.
+// Returns null if we have nothing from the last 3 hours (an old reading would mislead later analysis).
+function snapshot() {
+  if (!cached || Date.now() - cached.fetchedAt > 3 * 60 * 60 * 1000) return null;
+  return cached;
+}
+
+module.exports = { init, getWeather, snapshot, SERVICES, _test: { fromWmo, fromMetSymbol, sunUp } };

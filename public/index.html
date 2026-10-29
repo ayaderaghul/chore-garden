@@ -375,7 +375,7 @@ async function complete(id){
   const c = state.chores.find(x=>x.id===id); if(!c){ busy=false; return; }
   const before = levelInfo(state.pts).L;
   try{
-    const e = await api("POST","/api/completions",{choreId:id});
+    const e = await api("POST","/api/completions",{choreId:id, tz: Intl.DateTimeFormat().resolvedOptions().timeZone});
     state.log.push(e); state.pts += e.p; justAdded = e.id; render();
     const after = levelInfo(state.pts);
     if (after.L > before) toast(`Level ${after.L} · ${after.title}!`, true);

@@ -31,6 +31,15 @@ CREATE TABLE IF NOT EXISTS completions (
   done_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS completions_done_at_idx ON completions (done_at);
+-- Weather and time zone at the moment a chore was done (added later, so nullable).
+ALTER TABLE completions ADD COLUMN IF NOT EXISTS wx_kind TEXT;
+ALTER TABLE completions ADD COLUMN IF NOT EXISTS wx_intensity SMALLINT;
+ALTER TABLE completions ADD COLUMN IF NOT EXISTS wx_temp REAL;
+ALTER TABLE completions ADD COLUMN IF NOT EXISTS wx_is_day BOOLEAN;
+ALTER TABLE completions ADD COLUMN IF NOT EXISTS wx_place TEXT;
+ALTER TABLE completions ADD COLUMN IF NOT EXISTS wx_source TEXT;
+ALTER TABLE completions ADD COLUMN IF NOT EXISTS wx_observed_at TIMESTAMPTZ;
+ALTER TABLE completions ADD COLUMN IF NOT EXISTS tz TEXT;
 -- Small key/value store for API politeness state (pauses, MET Expires/Last-Modified, cached weather).
 CREATE TABLE IF NOT EXISTS api_state (
   key TEXT PRIMARY KEY,
@@ -105,6 +114,12 @@ app.get("/api/weather", wrap(async (_req, res) => {
   res.json(await weather.getWeather());
 }));
 
+// An IANA zone name like "Europe/Rome", or null if missing or unknown.
+function validTimeZone(tz) {
+  if (typeof tz !== "string" || tz.length > 64) return null;
+  try { new Intl.DateTimeFormat("en", { timeZone: tz }); return tz; } catch { return null; }
+}
+
 const toEntry = r => ({ id: r.id, c: r.chore_id, n: r.name, f: r.flower, d: r.diff, p: r.pts, t: new Date(r.done_at).getTime() });
 const toChore = r => ({ id: r.id, name: r.name, diff: r.diff, flower: r.flower });
 
@@ -119,11 +134,17 @@ app.get("/api/state", wrap(async (_req, res) => {
 
 app.post("/api/completions", wrap(async (req, res) => {
   const id = Number(req.body.choreId);
+  const tz = validTimeZone(req.body.tz);
+  const w = weather.snapshot(); // already-fetched weather only; logging a chore never calls a weather service
   const { rows } = await pool.query(
-    `INSERT INTO completions (chore_id, name, flower, diff, pts)
+    `INSERT INTO completions (chore_id, name, flower, diff, pts,
+                              wx_kind, wx_intensity, wx_temp, wx_is_day, wx_place, wx_source, wx_observed_at, tz)
      SELECT id, name, flower, diff,
-            CASE diff WHEN 1 THEN 5 WHEN 2 THEN 10 WHEN 3 THEN 20 ELSE 35 END
-     FROM chores WHERE id = $1 RETURNING *`, [id]);
+            CASE diff WHEN 1 THEN 5 WHEN 2 THEN 10 WHEN 3 THEN 20 ELSE 35 END,
+            $2, $3, $4, $5, $6, $7, to_timestamp($8::double precision / 1000), $9
+     FROM chores WHERE id = $1 RETURNING *`,
+    [id, w?.kind ?? null, w?.intensity ?? null, w?.temp ?? null, w?.isDay ?? null,
+     w?.place ?? null, w?.source ?? null, w?.fetchedAt ?? null, tz]);
   if (!rows.length) return res.status(404).json({ error: "That chore no longer exists" });
   res.status(201).json(toEntry(rows[0]));
 }));

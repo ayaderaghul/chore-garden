@@ -32,6 +32,15 @@ DATABASE_URL=postgres://... APP_PASSCODE=something npm start
 | Medium | 20 |
 | Hard | 35 |
 
+## What each completion records
+
+`completions.done_at` is the exact moment (UTC). Each completion also stores:
+
+- `tz`: the device's time zone (e.g. `Europe/Rome`), so hour-of-day stays right when travelling. Use `done_at AT TIME ZONE tz`.
+- The weather at that moment: `wx_kind`, `wx_intensity`, `wx_temp` (°C), `wx_is_day`, `wx_place`, `wx_source`, `wx_observed_at`. This comes from the weather the server already has; logging a chore never calls a weather service. It is empty when no reading from the last 3 hours exists.
+
+Completions logged before this was added have these columns empty.
+
 ## Weather and butterflies
 
 The garden sky follows the real weather: sun or moon and stars, drifting clouds, rain, snow, fog and lightning. On dry daytime weather a butterfly sometimes flies through and stops on a flower.
