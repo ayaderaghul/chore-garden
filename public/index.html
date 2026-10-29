@@ -100,6 +100,16 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 @keyframes flap{from{transform:scaleX(1)}to{transform:scaleX(.25)}}
 .wxcredit a{color:inherit}
 .wxcredit .warn{color:var(--accent)}
+.wxrow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin:6px 2px 0}
+.wxrow .wxcredit{margin:0;min-width:0;flex:1 1 220px}
+.placebox{display:flex;flex-direction:column;gap:8px;background:var(--paper);border:1px dashed var(--moss);border-radius:14px;padding:12px;margin-top:8px}
+.placebox form{display:flex;gap:8px}
+.placebox input{flex:1;min-width:0;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 10px}
+.placelist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.placelist button{width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.placelist button:hover{border-color:var(--moss)}
+.placelist small{color:var(--muted)}
+.placebox a{color:inherit}
 .flowers{display:flex;flex-wrap:wrap;align-items:flex-end;gap:2px 0;padding:62px 10px 0;min-height:190px;position:relative;z-index:1}
 .fl{width:40px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
 .fl svg{display:block;overflow:visible}
@@ -195,7 +205,19 @@ form.add input,form.add select{font:inherit;color:var(--ink);background:var(--bg
       <div class="flash" id="flash" aria-hidden="true"></div>
       <div class="soil"></div>
     </div>
-    <p class="note wxcredit" id="wxCredit" style="margin:6px 2px 0"></p>
+    <div class="wxrow">
+      <p class="note wxcredit" id="wxCredit"></p>
+      <button class="link" type="button" id="placeBtn">Change place</button>
+    </div>
+    <div class="placebox" id="placeBox" hidden>
+      <form id="placeForm">
+        <input id="placeInput" placeholder="City or town, e.g. Hải Phòng" maxlength="80" aria-label="City or town" autocomplete="off">
+        <button class="btn" type="submit" id="placeSearch">Search</button>
+      </form>
+      <p class="note" id="placeMsg" role="status"></p>
+      <ul class="placelist" id="placeList"></ul>
+      <p class="note" id="placeCredit"></p>
+    </div>
   </section>
 
   <section style="display:flex;flex-direction:column;gap:12px">
@@ -447,7 +469,7 @@ $("gateForm").addEventListener("submit", async ev=>{
 
 // ---------- weather sky ----------
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-let wx = null, wxAt = 0, wxNotices = [];
+let wx = null, wxAt = 0, wxNotices = [], wxLocation = null;
 const WX_KINDS = ["clear","partly","cloudy","fog","drizzle","rain","snow","thunder"];
 
 // Only an open, visible page asks for weather; the server never fetches on its own.
@@ -456,7 +478,7 @@ async function fetchWeather(){
   wxAt = Date.now();
   try{
     const r = await api("GET","/api/weather");
-    wx = r.weather || null; wxNotices = r.notices || []; applyWeather();
+    wx = r.weather || null; wxNotices = r.notices || []; wxLocation = r.location || null; applyWeather();
   }catch(e){ /* weather is decoration; the garden works without it */ }
 }
 function applyWeather(){
@@ -464,7 +486,7 @@ function applyWeather(){
   WX_KINDS.forEach(k=>bed.classList.toggle("w-"+k, wx && wx.kind===k));
   bed.classList.toggle("w-night", !!wx && !wx.isDay);
   const warn = wxNotices.map(n=>`<strong class="warn">${esc(n.service)}: ${esc(n.message)}</strong>`).join(" · ");
-  if (!wx){ $("wx").hidden = true; $("wxCredit").innerHTML = warn; startParticles(); return; }
+  if (!wx){ $("wx").hidden = true; $("wxCredit").innerHTML = (wxLocation? `Weather in ${esc(wxLocation.name)} is unavailable right now.` : "") + (warn? "<br>"+warn : ""); startParticles(); return; }
   $("wx").hidden = false;
   $("wx").textContent = (wx.temp!=null? wx.temp+"° · " : "") + wx.label;
   $("wx").title = wx.place;
@@ -580,6 +602,41 @@ function fly(){
 }
 document.addEventListener("visibilitychange", ()=>{ if (!document.hidden && !bfFlying) scheduleButterfly(); });
 
+
+// ---------- choose the weather's place ----------
+// Search runs only when Search is pressed (the providers forbid search-as-you-type); the server caches answers.
+let placeResults = [];
+$("placeBtn").addEventListener("click", ()=>{
+  const open = $("placeBox").hidden;
+  $("placeBox").hidden = !open; $("placeBtn").textContent = open ? "Close" : "Change place";
+  if (open){ $("placeMsg").textContent = wxLocation ? `Now: ${placeLabel(wxLocation)}` : ""; $("placeInput").focus(); }
+});
+const placeLabel = p => [p.name, p.region, p.country].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join(", ");
+$("placeForm").addEventListener("submit", async ev=>{
+  ev.preventDefault();
+  const q = $("placeInput").value.trim(); if (q.length < 2){ $("placeMsg").textContent = "Type at least 2 letters."; return; }
+  $("placeSearch").disabled = true; $("placeMsg").textContent = "Searching…"; $("placeList").innerHTML = ""; $("placeCredit").textContent = "";
+  try{
+    const r = await api("GET","/api/places?q="+encodeURIComponent(q));
+    placeResults = r.results;
+    $("placeMsg").textContent = r.results.length ? "Pick the right one:" : "No places found. Check the spelling or try a nearby town.";
+    $("placeList").innerHTML = r.results.map((p,i)=>`<li><button type="button" data-i="${i}">${esc(p.name)} <small>${esc([p.region,p.country].filter(Boolean).join(", "))}</small></button></li>`).join("");
+    $("placeCredit").innerHTML = r.source==="OpenStreetMap"
+      ? `Places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>`
+      : `Places from <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> (GeoNames, CC BY 4.0)`;
+  }catch(e){ if (e.message!=="auth") $("placeMsg").textContent = e.message; }
+  finally{ $("placeSearch").disabled = false; }
+});
+$("placeList").addEventListener("click", async ev=>{
+  const b = ev.target.closest("button[data-i]"); if (!b) return;
+  const p = placeResults[Number(b.dataset.i)]; if (!p) return;
+  try{
+    wxLocation = await api("PUT","/api/location", p);
+    $("placeBox").hidden = true; $("placeBtn").textContent = "Change place"; $("placeList").innerHTML = ""; $("placeInput").value = "";
+    toast(`Weather now from ${p.name}`);
+    fetchWeather();
+  }catch(e){ fail(e); }
+});
 render();
 scheduleButterfly(true);
 if (passcode) load().catch(fail); else showGate();

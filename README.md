@@ -12,8 +12,7 @@ Log household chores, earn points by difficulty, level up, and grow a flower for
 | --- | --- |
 | `DATABASE_URL` | Neon connection string |
 | `APP_PASSCODE` | Passcode you type once on each device |
-| `WEATHER_LAT`, `WEATHER_LON` | Where the garden's weather comes from (default: Castelfranco Veneto, 45.6715, 11.9274) |
-| `WEATHER_PLACE` | Place name shown under the garden |
+| `WEATHER_LAT`, `WEATHER_LON`, `WEATHER_PLACE` | Starting place for the weather until one is picked in the app (default: Castelfranco Veneto) |
 | `WEATHER_CONTACT` | Contact sent to MET Norway in the User-Agent (default: this repo's URL) |
 
 ## Run locally
@@ -49,10 +48,14 @@ The garden sky follows the real weather: sun or moon and stars, drifting clouds,
 
 | Service | Used for | Terms we follow |
 | --- | --- | --- |
-| [Open-Meteo](https://open-meteo.com/en/terms) forecast | Current weather (main source) | Non-commercial, under 10,000 calls/day. Results cached 15 min in the database (at most ~96 calls/day). Credited under the garden (CC BY 4.0). |
-| [MET Norway](https://api.met.no/doc/TermsOfService) Locationforecast 2.0 | Fallback | `User-Agent` names the app and a contact; coordinates rounded to 4 decimals; no request before `Expires`; `If-Modified-Since` with the stored `Last-Modified`. `Expires`, `Last-Modified` and the forecast are saved in the database, so they survive a restart. Credited under the garden (CC BY 4.0). |
+| [Open-Meteo](https://open-meteo.com/en/terms) forecast | Weather (main source) | Non-commercial, under 10,000 calls/day. Results cached 15 min in the database (at most ~96 calls/day). Credited under the garden (CC BY 4.0). |
+| [MET Norway](https://api.met.no/doc/TermsOfService) Locationforecast 2.0 | Weather fallback | `User-Agent` names the app and a contact; coordinates rounded to 4 decimals; no request before `Expires`; `If-Modified-Since` with the stored `Last-Modified`. `Expires`, `Last-Modified` and the forecast are saved in the database, so they survive a restart. Credited under the garden (CC BY 4.0). |
+| [Open-Meteo Geocoding](https://open-meteo.com/en/docs/geocoding-api) | City search (main source) | Same terms as the forecast. Place data from GeoNames (CC BY 4.0), credited under the results. |
+| [OpenStreetMap Nominatim](https://operations.osmfoundation.org/policies/nominatim/) | City search fallback | At most 1 request per second (calls are queued and spaced 1.1 s apart), identifying `User-Agent`, results cached, no search-as-you-type, "© OpenStreetMap contributors" shown under the results. |
 
-Nothing else: no geocoding or map services, and no Google Fonts.
+Nothing else, and no Google Fonts.
+
+**Choosing the place.** "Change place" under the garden searches for a city. A search runs only when you press Search, and every answer is saved for 30 days, so repeating a search makes no request. On top of each provider's own limits, the server lets at most 10 searches a minute through. Weather and MET forecasts are cached per place, so switching between cities reuses what is saved.
 
 - **Your IP stays private.** The browser never contacts these services; the server does.
 - **No fetching while the app isn't in use.** The server never polls. It only fetches when an open, visible page asks (on load, then every 30 minutes while visible).
@@ -74,7 +77,8 @@ A success clears that service's pause. While a service is paused, the other one 
 To unblock a stopped service after fixing the cause, run in Neon:
 
 ```sql
-DELETE FROM api_state WHERE key = 'service:MET Norway';   -- or 'service:Open-Meteo'
+DELETE FROM api_state WHERE key = 'service:MET Norway';
+-- or 'service:Open-Meteo', 'service:Open-Meteo geocoding', 'service:OpenStreetMap Nominatim'
 ```
 
 Tests for these rules: `node test/policy.test.js`.

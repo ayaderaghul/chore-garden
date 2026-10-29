@@ -64,7 +64,7 @@ const pausedFor = (svc, name) => svc._state(name).pausedUntil - NOW;
   // ---- weather: Open-Meteo daily quota -> MET fallback; MET Expires / If-Modified-Since persisted
   db.clear(); calls.length = 0; NOW = Date.UTC(2026, 9, 29, 10, 0, 0);
   delete require.cache[require.resolve("../weather")];
-  let weather = require("../weather"); await weather.init(store);
+  let weather = require("../weather"); let svc = fresh(); await svc.load(weather.SERVICES); await weather.init(store, svc);
   const metBody = JSON.stringify({ properties: { timeseries: [{ time: new Date(NOW - 600e3).toISOString(), data: { instant: { details: { air_temperature: 13.6 } }, next_1_hours: { summary: { symbol_code: "partlycloudy_day" } } } }] } });
   reply = url => url.includes("open-meteo")
     ? R(429, '{"reason":"Daily API request limit exceeded"}')
@@ -76,7 +76,7 @@ const pausedFor = (svc, name) => svc._state(name).pausedUntil - NOW;
   console.log("ok Open-Meteo daily limit -> MET Norway fallback, UA + 4-decimal coords");
 
   // restart before Expires: no MET request at all
-  delete require.cache[require.resolve("../weather")]; weather = require("../weather"); await weather.init(store);
+  delete require.cache[require.resolve("../weather")]; weather = require("../weather"); svc = fresh(); await svc.load(weather.SERVICES); await weather.init(store, svc);
   NOW += 16 * MIN; calls.length = 0;
   r = await weather.getWeather();
   assert.strictEqual(calls.filter(c => c.url.includes("met.no")).length, 0); assert.strictEqual(calls.filter(c => c.url.includes("open-meteo")).length, 0);
@@ -90,7 +90,47 @@ const pausedFor = (svc, name) => svc._state(name).pausedUntil - NOW;
   const metCall = calls.find(c => c.url.includes("met.no"));
   assert.strictEqual(metCall.h["If-Modified-Since"], "Thu, 29 Oct 2026 09:40:00 GMT");
   assert.strictEqual(r.weather.kind, "partly");
-  assert.strictEqual(JSON.parse(db.get("met:locationforecast")).expires, NOW + 30 * MIN);
+  assert.strictEqual(JSON.parse(db.get("met:45.6715,11.9274")).expires, NOW + 30 * MIN);
   console.log("ok If-Modified-Since sent after Expires; 304 keeps the forecast; new Expires saved");
+
+  // switching city: new coordinates get their own MET cache; switching back reuses the saved one
+  await weather.setLocation({ name: "Hải Phòng", country: "Vietnam", lat: 20.86481234, lon: 106.68345678 });
+  calls.length = 0;
+  reply = url => url.includes("open-meteo") ? R(500) : R(200, metBody, { expires: new Date(NOW + 30 * MIN).toUTCString(), "last-modified": "x" });
+  NOW += 61 * MIN; // let Open-Meteo's backoff pass, it fails again
+  r = await weather.getWeather();
+  assert.ok(calls.some(c => c.url.includes("lat=20.8648&lon=106.6835")), "new city rounded to 4 decimals");
+  assert.strictEqual(r.weather.place, "Hải Phòng");
+  await weather.setLocation({ name: "Castelfranco Veneto", lat: 45.6715, lon: 11.9274 });
+  r = await weather.getWeather();
+  await weather.setLocation({ name: "Hải Phòng", country: "Vietnam", lat: 20.8648, lon: 106.6835 });
+  calls.length = 0; NOW += 5 * MIN; r = await weather.getWeather();
+  assert.strictEqual(calls.length, 0, "switching back within 15 minutes makes no request");
+  assert.strictEqual(r.weather.place, "Hải Phòng");
+  console.log("ok switching city uses its own cache; coordinates rounded to 4 decimals");
+
+  // ---- city search
+  db.clear(); calls.length = 0;
+  const places = require("../places"); const ps = fresh(); await ps.load(places.SERVICES); places.init(store, ps, "chore-garden/test (contact)");
+  await assert.rejects(places.search("a"), /at least 2/); assert.strictEqual(calls.length, 0);
+  reply = url => url.includes("open-meteo")
+    ? R(200, JSON.stringify({ results: [{ name: "Haiphong", admin1: "Hai Phong", country: "Vietnam", latitude: 20.86481, longitude: 106.68345 }] }))
+    : R(500);
+  let p = await places.search("  Hai  PHONG ");
+  assert.strictEqual(p.source, "Open-Meteo"); assert.strictEqual(p.results[0].lat, 20.8648);
+  calls.length = 0; p = await places.search("hai phong"); assert.strictEqual(p.cached, true); assert.strictEqual(calls.length, 0);
+  console.log("ok search cached: same query again makes no request");
+
+  // Open-Meteo geocoding blocked -> Nominatim, spaced >= 1.1 s apart
+  reply = url => url.includes("open-meteo") ? R(403)
+    : R(200, JSON.stringify([{ name: "Villarazzo", lat: "45.69", lon: "11.93", address: { state: "Veneto", country: "Italy" } }]));
+  const t0 = performance.now();
+  const [a, b] = await Promise.all([places.search("villarazzo"), places.search("castello di godego")]);
+  const osm = calls.filter(c => c.url.includes("nominatim"));
+  assert.strictEqual(a.source, "OpenStreetMap"); assert.strictEqual(osm.length, 2);
+  assert.ok(performance.now() - t0 >= 1090, "second Nominatim call waited");
+  assert.strictEqual(osm[0].h["User-Agent"], "chore-garden/test (contact)");
+  assert.deepStrictEqual(ps.notices(places.SERVICES), [{ service: "Open-Meteo geocoding", message: "you are blocked" }]);
+  console.log("ok geocoding 403 -> 'you are blocked', Nominatim fallback 1 request/second");
   console.log("\nall policy tests passed");
 })().catch(e => { console.log("FAIL", e); process.exit(1); });

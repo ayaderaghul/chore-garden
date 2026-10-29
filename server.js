@@ -3,6 +3,8 @@ const path = require("path");
 const crypto = require("crypto");
 const { Pool } = require("pg");
 const weather = require("./weather");
+const places = require("./places");
+const { createServices } = require("./services");
 
 const { DATABASE_URL, APP_PASSCODE, PORT = 3000 } = process.env;
 if (!DATABASE_URL) throw new Error("DATABASE_URL is not set");
@@ -111,7 +113,25 @@ const store = {
 // Called only by an open, visible page. The server never fetches weather on its own.
 app.get("/api/weather", wrap(async (_req, res) => {
   res.set("Cache-Control", "no-store");
-  res.json(await weather.getWeather());
+  const w = await weather.getWeather();
+  res.json({ ...w, notices: [...w.notices, ...places.notices()] });
+}));
+
+// City search: runs only when the person presses Search (see places.js for the providers' rules).
+app.get("/api/places", wrap(async (req, res) => {
+  try { res.json(await places.search(req.query.q)); }
+  catch (e) { res.status(e.status || 503).json({ error: e.message, notices: places.notices() }); }
+}));
+
+app.put("/api/location", wrap(async (req, res) => {
+  const name = String(req.body.name || "").trim().slice(0, 80);
+  const lat = Number(req.body.lat), lon = Number(req.body.lon);
+  if (!name) return res.status(400).json({ error: "Pick a place" });
+  if (!(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)) return res.status(400).json({ error: "That place has no valid coordinates" });
+  res.json(await weather.setLocation({
+    name, lat, lon,
+    region: String(req.body.region || "").slice(0, 80), country: String(req.body.country || "").slice(0, 80),
+  }));
 }));
 
 // An IANA zone name like "Europe/Rome", or null if missing or unknown.
@@ -189,7 +209,10 @@ app.delete("/api/chores/:id", wrap(async (req, res) => {
   res.status(204).end();
 }));
 
+const services = createServices(store);
 migrate()
-  .then(() => weather.init(store))
+  .then(() => services.load([...weather.SERVICES, ...places.SERVICES]))
+  .then(() => weather.init(store, services))
+  .then(() => places.init(store, services, weather.USER_AGENT))
   .then(() => app.listen(PORT, () => console.log(`Chore Garden listening on ${PORT}`)))
   .catch(err => { console.error("Migration failed", err); process.exit(1); });
